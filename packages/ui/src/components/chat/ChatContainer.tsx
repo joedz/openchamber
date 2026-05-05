@@ -961,27 +961,27 @@ export const ChatContainer: React.FC = () => {
             <div
                 className={cn(
                     'relative z-10',
-					isDesktopExpandedInput
-						? 'flex-1 min-h-0 bg-background'
-						: 'bg-background'
-				)}
-			>
-				{!isDesktopExpandedInput && sessionMessages.length > 0 && (
-					<ScrollToBottomButton
+                    isDesktopExpandedInput
+                        ? 'flex-1 min-h-0 bg-background'
+                        : 'bg-background'
+                )}
+            >
+                {!isDesktopExpandedInput && sessionMessages.length > 0 && (
+                    <ScrollToBottomButton
                         visible={timelineController.showScrollToBottom}
                         onClick={navigation.resumeToLatest}
                     />
-				)}
-				<ChatInput scrollToBottom={resumeToLatestInstant} />
-			</div>
+                )}
+                <ChatInput scrollToBottom={resumeToLatestInstant} />
+            </div>
 
             <TimelineDialog
                 open={isTimelineDialogOpen}
                 onOpenChange={setTimelineDialogOpen}
                 onScrollToMessage={timelineController.scrollToMessage}
                 onScrollByTurnOffset={navigation.scrollByTurnOffset}
-                onResumeToLatest={() => resumeToLatestInstant()}
+                onResumeToLatest={resumeToLatestInstant}
             />
-		</div>
+        </div>
     );
 };

@@ -9,7 +9,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessionMessageRecords } from '@/sync/sync-context';
-import { RiLoader4Line, RiSearchLine, RiTimeLine, RiGitBranchLine, RiArrowGoBackLine, RiUserLine, RiRobot2Line } from '@remixicon/react';
+import { RiLoader4Line, RiSearchLine, RiTimeLine, RiGitBranchLine, RiArrowGoBackLine } from '@remixicon/react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Part } from '@opencode-ai/sdk/v2';
 import { useI18n } from '@/lib/i18n';
@@ -41,6 +41,8 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
 
     const [forkingMessageId, setForkingMessageId] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState('');
+    const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const itemRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
     const formatRelativeTime = React.useCallback((timestamp: number): string => {
         const now = Date.now();
@@ -57,21 +59,78 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
         return new Date(timestamp).toLocaleDateString();
     }, [t]);
 
-    // All messages (reversed for newest first)
-    const allMessages = React.useMemo(() => {
-        return [...messages].reverse();
+    // Timeline actions are only valid for user messages.
+    const userMessages = React.useMemo(() => {
+        return messages
+            .filter((message) => message.info.role === 'user')
+            .map((message, index) => ({
+                message,
+                messageNumber: index + 1,
+            }))
+            .reverse();
     }, [messages]);
 
-    // Filter by search query using full text
+    // Filter by search query using all text parts in each user message.
     const filteredMessages = React.useMemo(() => {
-        if (!searchQuery.trim()) return allMessages;
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery) return userMessages;
 
-        const query = searchQuery.toLowerCase();
-        return allMessages.filter((message) => {
+        const query = trimmedQuery.toLowerCase();
+        return userMessages.filter(({ message }) => {
             const fullText = getFullText(message.parts).toLowerCase();
             return fullText.includes(query);
         });
-    }, [allMessages, searchQuery]);
+    }, [userMessages, searchQuery]);
+
+    React.useEffect(() => {
+        setSelectedIndex(0);
+    }, [filteredMessages]);
+
+    React.useEffect(() => {
+        itemRefs.current = itemRefs.current.slice(0, filteredMessages.length);
+    }, [filteredMessages.length]);
+
+    React.useEffect(() => {
+        itemRefs.current[selectedIndex]?.scrollIntoView({
+            block: 'nearest',
+        });
+    }, [selectedIndex]);
+
+    const navigateToMessage = React.useCallback(async (messageId: string) => {
+        const didNavigate = await onScrollToMessage?.(messageId);
+        if (didNavigate === false) {
+            return;
+        }
+        onOpenChange(false);
+    }, [onOpenChange, onScrollToMessage]);
+
+    const handleSearchKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+        const total = filteredMessages.length;
+        if (total === 0) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setSelectedIndex((current) => (current + 1) % total);
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setSelectedIndex((current) => (current - 1 + total) % total);
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const safeIndex = ((selectedIndex % total) + total) % total;
+            const selected = filteredMessages[safeIndex];
+            if (selected) {
+                void navigateToMessage(selected.message.info.id);
+            }
+        }
+    }, [filteredMessages, navigateToMessage, selectedIndex]);
 
     // Handle fork with loading state and session refresh
     const handleFork = async (messageId: string) => {
@@ -103,9 +162,11 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
                 <div className="relative mt-2">
                     <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                        autoFocus
                         placeholder={t('chat.timeline.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleSearchKeyDown}
                         className="pl-9 w-full"
                     />
                 </div>
@@ -116,12 +177,11 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
                             {searchQuery ? t('chat.timeline.empty.search') : t('chat.timeline.empty.session')}
                         </div>
                     ) : (
-                        filteredMessages.map((message) => {
+                        filteredMessages.map(({ message, messageNumber }, index) => {
                             const preview = getMessagePreview(message.parts);
                             const timestamp = message.info.time.created;
                             const relativeTime = formatRelativeTime(timestamp);
-                            const messageNumber = allMessages.length - allMessages.indexOf(message);
-                            const isUser = message.info.role === 'user';
+                            const isSelected = index === selectedIndex;
 
                             const snippet = searchQuery.trim()
                                 ? getSearchSnippet(getFullText(message.parts), searchQuery)
@@ -130,32 +190,36 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
                             return (
                                 <div
                                     key={message.info.id}
-                                    className="group flex items-center gap-2 py-1.5 hover:bg-interactive-hover/30 rounded transition-colors cursor-pointer"
-                                    onClick={async () => {
-                                        const didNavigate = await onScrollToMessage?.(message.info.id);
-                                        if (didNavigate === false) {
-                                            return;
-                                        }
-                                        onOpenChange(false);
+                                    ref={(element) => {
+                                        itemRefs.current[index] = element;
                                     }}
+                                    className={cn(
+                                        "group flex items-center gap-2 py-1.5 hover:bg-interactive-hover/30 rounded transition-colors cursor-pointer",
+                                        isSelected && "bg-interactive-selection text-interactive-selection-foreground"
+                                    )}
+                                    onClick={() => void navigateToMessage(message.info.id)}
+                                    onMouseEnter={() => setSelectedIndex(index)}
                                 >
-                                    <span className="typography-meta text-muted-foreground w-5 text-right flex-shrink-0">
+                                    <span className={cn(
+                                        "typography-meta w-5 text-right flex-shrink-0",
+                                        isSelected ? "text-interactive-selection-foreground/70" : "text-muted-foreground"
+                                    )}>
                                         {messageNumber}.
                                     </span>
-                                    <span className="flex-shrink-0 text-muted-foreground">
-                                        {isUser ? (
-                                            <RiUserLine className="h-3.5 w-3.5" />
-                                        ) : (
-                                            <RiRobot2Line className="h-3.5 w-3.5" />
-                                        )}
-                                    </span>
-                                    <p className="flex-1 min-w-0 typography-small text-foreground truncate ml-0.5">
-                                        {snippet ? snippet.snippet : (preview || t('chat.timeline.noTextContent'))}
+                                    <p className={cn(
+                                        "flex-1 min-w-0 typography-small truncate ml-0.5",
+                                        isSelected ? "text-interactive-selection-foreground" : "text-foreground"
+                                    )}>
+                                        {snippet ?? (preview || t('chat.timeline.noTextContent'))}
                                         {!snippet && preview && preview.length >= 80 && '…'}
                                     </p>
 
                                     <div className="flex-shrink-0 h-5 flex items-center mr-2">
-                                        <span className={cn("typography-meta text-muted-foreground whitespace-nowrap", alwaysShowActions ? "hidden" : "group-hover:hidden")}>
+                                        <span className={cn(
+                                            "typography-meta whitespace-nowrap",
+                                            isSelected ? "text-interactive-selection-foreground/70" : "text-muted-foreground",
+                                            alwaysShowActions ? "hidden" : "group-hover:hidden"
+                                        )}>
                                             {relativeTime}
                                         </span>
 
@@ -250,36 +314,25 @@ export const TimelineDialog: React.FC<TimelineDialogProps> = ({
 };
 
 function getFullText(parts: Part[]): string {
-  return parts
-    .filter((p): p is Part & { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
-    .map((p) => p.text)
-    .join('\n');
+    return parts
+        .filter((p): p is Part & { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
+        .map((p) => p.text)
+        .join('\n');
 }
 
 function getMessagePreview(parts: Part[]): string {
-  const full = getFullText(parts);
-  const singleLine = full.replace(/\n/g, ' ');
-  return singleLine.length > 80 ? singleLine.slice(0, 80) : singleLine;
+    const full = getFullText(parts);
+    const singleLine = full.replace(/\n/g, ' ');
+    return singleLine.length > 80 ? singleLine.slice(0, 80) : singleLine;
 }
 
-interface SearchSnippet {
-  snippet: string;
-  matchStart: number;
-  matchLength: number;
-}
+function getSearchSnippet(text: string, query: string, contextChars: number = 30): string | null {
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const matchIndex = lowerText.indexOf(lowerQuery);
+    if (matchIndex === -1) return null;
 
-function getSearchSnippet(text: string, query: string, contextChars: number = 30): SearchSnippet | null {
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  const matchIndex = lowerText.indexOf(lowerQuery);
-  if (matchIndex === -1) return null;
-
-  const start = Math.max(0, matchIndex - contextChars);
-  const end = Math.min(text.length, matchIndex + query.length + contextChars);
-  const snippet = (start > 0 ? '…' : '') + text.slice(start, end).replace(/\n/g, ' ') + (end < text.length ? '…' : '');
-
-  const matchStart = start > 0 ? contextChars + 1 : matchIndex - start;
-  const matchLength = query.length;
-
-  return { snippet, matchStart, matchLength };
+    const start = Math.max(0, matchIndex - contextChars);
+    const end = Math.min(text.length, matchIndex + query.length + contextChars);
+    return `${start > 0 ? '…' : ''}${text.slice(start, end).replace(/\n/g, ' ')}${end < text.length ? '…' : ''}`;
 }
