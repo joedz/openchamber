@@ -51,6 +51,7 @@ import { useI18n } from '@/lib/i18n';
 import { applyMobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import { SyncAppEffects } from '@/apps/AppEffects';
 import { useAppFontEffects } from '@/apps/useAppFontEffects';
+import { resetStreamingState } from '@/sync/streaming';
 
 // Lazy-loaded heavy views — loaded on demand to reduce initial bundle size.
 const OnboardingScreen = lazyWithChunkRecovery(() =>
@@ -221,6 +222,7 @@ function App({ apis }: AppProps) {
   React.useEffect(() => {
     return subscribeRuntimeEndpointChanged((detail) => {
       useSessionUIStore.getState().prepareForRuntimeSwitch(detail.previousRuntimeKey);
+      useUIStore.getState().prepareForRuntimeSwitch(detail.previousRuntimeKey);
       opencodeClient.reconnectToRuntimeBaseUrl();
       useConfigStore.setState({
         providers: [],
@@ -232,6 +234,8 @@ function App({ apis }: AppProps) {
       });
       useProjectsStore.getState().resetForRuntimeSwitch();
       useSessionUIStore.getState().restoreForRuntimeSwitch(detail.runtimeKey);
+      useUIStore.getState().restoreForRuntimeSwitch(detail.runtimeKey);
+      resetStreamingState();
       setRuntimeEndpointEpoch((epoch) => epoch + 1);
       setInitRetryExhausted(false);
       setInitRetryEpoch((epoch) => epoch + 1);

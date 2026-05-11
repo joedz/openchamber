@@ -38,6 +38,8 @@ import type { QuestionRequest } from "@/types/question"
 import * as sessionActions from "./session-actions"
 import { getSessionMaterializationStatus, materializeSessionSnapshots } from "./materialization"
 import { openSessionFromToast } from "./session-navigation"
+import { getRuntimeLiveStatusSeed, LIVE_STATUS_TTL_MS } from "./runtime-live-memory"
+import { getRuntimeKey } from "@/lib/runtime-switch"
 
 // ---------------------------------------------------------------------------
 // Context
@@ -1459,9 +1461,35 @@ export function SyncProvider(props: {
 
   // Ensure current directory's child store exists
   useEffect(() => {
+    let seedExpiryTimer: ReturnType<typeof setTimeout> | undefined
     if (props.directory) {
       const store = childStores.ensureChild(props.directory)
+      const statusSeed = getRuntimeLiveStatusSeed(getRuntimeKey(), props.directory)
+      if (statusSeed) {
+        store.setState((state: DirectoryStore) => ({
+          session_status: {
+            ...state.session_status,
+            [statusSeed.sessionId]: state.session_status[statusSeed.sessionId] ?? statusSeed.status,
+          },
+        }))
+        seedExpiryTimer = setTimeout(() => {
+          store.setState((state: DirectoryStore) => {
+            if (state.session_status[statusSeed.sessionId] !== statusSeed.status) {
+              return state
+            }
+            return {
+              session_status: {
+                ...state.session_status,
+                [statusSeed.sessionId]: { type: "idle" as const },
+              },
+            }
+          })
+        }, LIVE_STATUS_TTL_MS)
+      }
       ingestDirectoryStateIntoRoutingIndex(routingIndex, props.directory, store.getState())
+    }
+    return () => {
+      if (seedExpiryTimer) clearTimeout(seedExpiryTimer)
     }
   }, [props.directory, childStores, routingIndex])
 
@@ -1482,6 +1510,7 @@ export function SyncProvider(props: {
     if (!props.directory) return
     const store = childStores.getChild(props.directory)
     if (!store) return
+    updateStreamingState(store.getState())
     const unsubscribe = store.subscribe((state) => {
       updateStreamingState(state)
     })

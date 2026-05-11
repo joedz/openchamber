@@ -54,11 +54,12 @@ import {
 } from "./session-actions"
 import { useInputStore, type SyntheticContextPart } from "./input-store"
 import { useSelectionStore } from "./selection-store"
-import { useViewportStore } from "./viewport-store"
+import { getViewportSessionMemory, useViewportStore, viewportSessionKey } from "./viewport-store"
 import { useSessionWorktreeStore } from "./session-worktree-store"
 import { getAttachedSessionDirectory } from "./session-worktree-contract"
 import { setSessionOpener } from "./session-navigation"
 import { getRuntimeKey } from "@/lib/runtime-switch"
+import { rememberRuntimeLiveStatus } from "./runtime-live-memory"
 
 export type { AttachedFile }
 
@@ -350,10 +351,28 @@ const DEFAULT_DRAFT: NewSessionDraftState = {
 }
 
 const activeSessionByRuntime = new Map<string, string | null>()
+type RuntimeSessionMemory = {
+  sessionId: string | null
+  directory: string | null
+  draft: NewSessionDraftState
+}
+const runtimeSessionMemory = new Map<string, RuntimeSessionMemory>()
 
 const runtimeMemoryKey = (value?: string | null): string => {
   const key = (value ?? getRuntimeKey()).trim()
   return key || "default"
+}
+
+const cloneDraft = (draft: NewSessionDraftState): NewSessionDraftState => ({ ...draft })
+
+const writeRuntimeSessionMemory = (key: string, patch: Partial<RuntimeSessionMemory>): void => {
+  const current = runtimeSessionMemory.get(key)
+  runtimeSessionMemory.set(key, {
+    sessionId: current?.sessionId ?? null,
+    directory: current?.directory ?? null,
+    draft: current?.draft ? cloneDraft(current.draft) : { ...DEFAULT_DRAFT },
+    ...patch,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -385,7 +404,8 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       get().closeNewSessionDraft()
     }
 
-    activeSessionByRuntime.set(runtimeMemoryKey(), id)
+    const key = runtimeMemoryKey()
+    activeSessionByRuntime.set(key, id)
 
     const previousSessionId = get().currentSessionId
 
@@ -400,6 +420,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
     )
     const fallbackDir = opencodeClient.getDirectory() ?? directoryState.currentDirectory ?? null
     const resolvedDir = (directoryHint ? normalizePath(directoryHint) : null) ?? sessionDir ?? fallbackDir
+    writeRuntimeSessionMemory(key, { sessionId: id, directory: resolvedDir ?? null })
 
     try {
       if (resolvedDir && directoryState.currentDirectory !== resolvedDir) {
@@ -415,7 +436,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
     if (previousSessionId && previousSessionId !== id) {
       const prevId = previousSessionId
       setTimeout(() => {
-        const memState = useViewportStore.getState().sessionMemoryState.get(prevId)
+        const memState = getViewportSessionMemory(prevId)
         if (!memState?.isStreaming) {
           const prevMessages = getSyncMessages(prevId)
           if (prevMessages.length > 0) {
@@ -433,14 +454,36 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
   },
 
   prepareForRuntimeSwitch: (apiBaseUrl?: string | null) => {
-    activeSessionByRuntime.set(runtimeMemoryKey(apiBaseUrl), get().currentSessionId)
+    const key = runtimeMemoryKey(apiBaseUrl)
+    const directory = useDirectoryStore.getState().currentDirectory || null
+    const currentSessionId = get().currentSessionId
+    const directorySnapshot = directory ? getDirectoryState(directory) : null
+    rememberRuntimeLiveStatus({
+      runtimeKey: key,
+      directory,
+      sessionId: currentSessionId,
+      status: currentSessionId ? directorySnapshot?.session_status?.[currentSessionId] : null,
+    })
+    activeSessionByRuntime.set(key, get().currentSessionId)
+    writeRuntimeSessionMemory(key, {
+      sessionId: currentSessionId,
+      directory,
+      draft: cloneDraft(get().newSessionDraft),
+    })
   },
 
   restoreForRuntimeSwitch: (apiBaseUrl?: string | null) => {
-    const restoredSessionId = activeSessionByRuntime.get(runtimeMemoryKey(apiBaseUrl)) ?? null
+    const key = runtimeMemoryKey(apiBaseUrl)
+    const memory = runtimeSessionMemory.get(key)
+    const restoredSessionId = memory?.sessionId ?? activeSessionByRuntime.get(key) ?? null
+    const restoredDraft = memory?.draft ? cloneDraft(memory.draft) : { ...DEFAULT_DRAFT }
+    const restoredDirectory = memory?.directory ?? null
+    if (restoredDirectory) {
+      useDirectoryStore.getState().setDirectory(restoredDirectory, { showOverlay: false })
+    }
     set({
       currentSessionId: restoredSessionId,
-      newSessionDraft: { ...DEFAULT_DRAFT },
+      newSessionDraft: restoredSessionId ? { ...DEFAULT_DRAFT } : restoredDraft,
       abortPromptSessionId: null,
       abortPromptExpiresAt: null,
       error: null,
@@ -503,23 +546,29 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
     persistDraftTarget({ projectId: selectedProject?.id ?? null, directory })
 
+    const nextDraft: NewSessionDraftState = {
+      open: true,
+      selectedProjectId: selectedProject?.id ?? null,
+      directoryOverride: directory,
+      pendingWorktreeRequestId: options?.pendingWorktreeRequestId ?? null,
+      bootstrapPendingDirectory: normalizePath(options?.bootstrapPendingDirectory ?? null),
+      preserveDirectoryOverride: options?.preserveDirectoryOverride === true,
+      parentID: options?.parentID ?? null,
+      title: options?.title,
+      initialPrompt: options?.initialPrompt,
+      syntheticParts: options?.syntheticParts,
+      targetFolderId: options?.targetFolderId,
+    }
+
     set({
       newSessionDraft: {
-        open: true,
-        selectedProjectId: selectedProject?.id ?? null,
-        directoryOverride: directory,
-        pendingWorktreeRequestId: options?.pendingWorktreeRequestId ?? null,
-        bootstrapPendingDirectory: normalizePath(options?.bootstrapPendingDirectory ?? null),
-        preserveDirectoryOverride: options?.preserveDirectoryOverride === true,
-        parentID: options?.parentID ?? null,
-        title: options?.title,
-        initialPrompt: options?.initialPrompt,
-        syntheticParts: options?.syntheticParts,
-        targetFolderId: options?.targetFolderId,
+        ...nextDraft,
       },
       currentSessionId: null,
       error: null,
     })
+
+    writeRuntimeSessionMemory(runtimeMemoryKey(), { sessionId: null, directory, draft: nextDraft })
 
     if (options?.initialPrompt) {
       useInputStore.getState().setPendingInputText(options.initialPrompt)
@@ -532,8 +581,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
   // closeNewSessionDraft
   // ---------------------------------------------------------------------------
   closeNewSessionDraft: () => {
-    set({
-      newSessionDraft: {
+    const nextDraft: NewSessionDraftState = {
         open: false,
         selectedProjectId: null,
         directoryOverride: null,
@@ -545,8 +593,11 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
         initialPrompt: undefined,
         syntheticParts: undefined,
         targetFolderId: undefined,
-      },
+      }
+    set({
+      newSessionDraft: nextDraft,
     })
+    writeRuntimeSessionMemory(runtimeMemoryKey(), { draft: nextDraft })
   },
 
   setNewSessionDraftTarget: (target) => {
@@ -855,10 +906,10 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
     if (currentSessionId) {
       const viewportState = useViewportStore.getState()
-      const memState = viewportState.sessionMemoryState.get(currentSessionId)
+      const memState = getViewportSessionMemory(currentSessionId)
       if (!memState || !memState.lastUserMessageAt) {
         const newMemState = new Map(viewportState.sessionMemoryState)
-        newMemState.set(currentSessionId, {
+        newMemState.set(viewportSessionKey(currentSessionId), {
           viewportAnchor: 0,
           isStreaming: false,
           lastAccessedAt: Date.now(),
