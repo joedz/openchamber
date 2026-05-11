@@ -552,6 +552,19 @@ const probeHostWithTimeout = async (url, timeoutMs, clientToken = '') => {
   }
 };
 
+const resolveStoredClientTokenForUrl = (targetUrl, config = readDesktopHostsConfig()) => {
+  const normalizedTarget = normalizeHostUrl(targetUrl);
+  if (!normalizedTarget) return '';
+  for (const host of config.hosts || []) {
+    const hostUrl = normalizeHostUrl(host?.url || '');
+    const apiUrl = normalizeHostUrl(host?.apiUrl || host?.url || '');
+    if (normalizedTarget === hostUrl || normalizedTarget === apiUrl) {
+      return sanitizeClientTokenForStorage(host?.clientToken);
+    }
+  }
+  return '';
+};
+
 const waitForHealth = async (url, timeoutMs = 20_000, initialPollMs = 250, maxPollMs = 2000) => {
   const deadline = Date.now() + timeoutMs;
   let pollMs = initialPollMs;
@@ -650,7 +663,7 @@ const buildPackagedUiUrl = (pathname = '/index.html') => new URL(pathname, `${pa
 const injectRuntimeConfigIntoHtml = (html) => {
   const apiBaseUrl = state.apiBaseUrl || state.sidecarUrl || '';
   const localOrigin = state.localOrigin || state.sidecarUrl || '';
-  const initScript = `<script>if(window.__OPENCHAMBER_LOCAL_ORIGIN__===undefined){window.__OPENCHAMBER_LOCAL_ORIGIN__=${JSON.stringify(localOrigin)};}if(window.__OPENCHAMBER_API_BASE_URL__===undefined){window.__OPENCHAMBER_API_BASE_URL__=${JSON.stringify(apiBaseUrl)};}if(window.__OPENCHAMBER_CLIENT_TOKEN__===undefined){window.__OPENCHAMBER_CLIENT_TOKEN__=${JSON.stringify(state.clientToken || '')};}</script>`;
+  const initScript = `<script>if(window.__OPENCHAMBER_LOCAL_ORIGIN__===undefined){window.__OPENCHAMBER_LOCAL_ORIGIN__=${JSON.stringify(localOrigin)};}if(window.__OPENCHAMBER_API_BASE_URL__===undefined){window.__OPENCHAMBER_API_BASE_URL__=${JSON.stringify(apiBaseUrl)};}if(window.__OPENCHAMBER_CLIENT_TOKEN__===undefined&&${JSON.stringify(state.clientToken || '')}){window.__OPENCHAMBER_CLIENT_TOKEN__=${JSON.stringify(state.clientToken || '')};}</script>`;
   if (html.includes('<head>')) return html.replace('<head>', `<head>${initScript}`);
   if (html.includes('</head>')) return html.replace('</head>', `${initScript}</head>`);
   return `${initScript}${html}`;
@@ -2483,14 +2496,19 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       const config = readDesktopHostsConfig();
       const localUiUrl = shouldUsePackagedUi() ? buildPackagedUiUrl('/index.html') : (state.sidecarUrl || state.localOrigin);
       let targetUrl = localUiUrl;
+      let runtimeConfig = {};
       if (config.defaultHostId && config.defaultHostId !== LOCAL_HOST_ID) {
         const host = config.hosts.find((entry) => entry.id === config.defaultHostId);
         const apiUrl = host?.apiUrl || host?.url;
         if (host?.url && apiUrl && !state.unreachableHosts.has(apiUrl)) {
           targetUrl = shouldUsePackagedUi() ? buildPackagedUiUrl('/index.html') : host.url;
+          runtimeConfig = {
+            apiBaseUrl: normalizeHostUrl(apiUrl),
+            clientToken: sanitizeClientTokenForStorage(host.clientToken),
+          };
         }
       }
-      await createAdditionalWindow(targetUrl);
+      await createAdditionalWindow(targetUrl, runtimeConfig);
       return null;
     }
 
@@ -2499,7 +2517,9 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       if (!targetUrl) {
         throw new Error('Invalid URL');
       }
-      const clientToken = typeof args.clientToken === 'string' ? args.clientToken : '';
+      const config = readDesktopHostsConfig();
+      const providedToken = typeof args.clientToken === 'string' ? args.clientToken : '';
+      const clientToken = sanitizeClientTokenForStorage(providedToken) || resolveStoredClientTokenForUrl(targetUrl, config);
       let windowUrl = targetUrl;
       const runtimeConfig = { apiBaseUrl: targetUrl, clientToken };
       if (shouldUsePackagedUi()) {
