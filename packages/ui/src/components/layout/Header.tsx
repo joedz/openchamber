@@ -869,14 +869,15 @@ export const Header: React.FC<HeaderProps> = ({
   const [remoteUpdateChecking, setRemoteUpdateChecking] = React.useState(false);
   const [remoteUpdateError, setRemoteUpdateError] = React.useState<string | null>(null);
   const compactCurrentInstanceLabel = React.useMemo(() => formatCompactHeaderLabel(currentInstanceLabel), [currentInstanceLabel]);
+  // INTERNAL-NETWORK: 'usage' tab removed — quota dashboard disabled. Default
+  // tabs are 'mcp' (mobile) / 'instance' (desktop). The useEffect that would
+  // have promoted to 'usage' is replaced by a no-op.
   const [desktopServicesTab, setDesktopServicesTab] = React.useState<'instance' | 'usage' | 'mcp'>(
-    isDesktopApp ? 'instance' : 'usage'
+    isDesktopApp ? 'instance' : 'mcp'
   );
-  const [mobileServicesTab, setMobileServicesTab] = React.useState<'usage' | 'mcp'>('usage');
+  const [mobileServicesTab, setMobileServicesTab] = React.useState<'usage' | 'mcp'>('mcp');
   useEffect(() => {
-    if (!isDesktopApp && desktopServicesTab === 'instance') {
-      setDesktopServicesTab('usage');
-    }
+    // no-op (was promoting to 'usage' tab)
   }, [desktopServicesTab, isDesktopApp]);
 
   const isVSCode = React.useMemo(() => isVSCodeRuntime(), []);
@@ -1789,8 +1790,8 @@ export const Header: React.FC<HeaderProps> = ({
     if (isDesktopApp) {
       base.push({ value: 'instance', label: t('layout.services.instance'), icon: <Icon name="server" className="h-3.5 w-3.5" /> });
     }
+    // INTERNAL-NETWORK: 'usage' tab hidden — quota dashboard disabled.
     base.push(
-      { value: 'usage', label: t('layout.services.usage'), icon: <Icon name="timer" className="h-3.5 w-3.5" /> },
       { value: 'mcp', label: 'MCP', icon: <McpIcon className="h-3.5 w-3.5" /> }
     );
     return base;

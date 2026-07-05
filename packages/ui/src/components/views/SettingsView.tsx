@@ -27,8 +27,8 @@ import { ProjectsPage } from '@/components/sections/projects/ProjectsPage';
 import { RemoteInstancesPage } from '@/components/sections/remote-instances/RemoteInstancesPage';
 import { ProvidersSidebar } from '@/components/sections/providers/ProvidersSidebar';
 import { ProvidersPage } from '@/components/sections/providers/ProvidersPage';
-import { UsageSidebar } from '@/components/sections/usage/UsageSidebar';
-import { UsagePage } from '@/components/sections/usage/UsagePage';
+// INTERNAL-NETWORK: UsageSidebar / UsagePage imports removed — quota dashboard
+// hidden.
 import { MagicPromptsSidebar } from '@/components/sections/magic-prompts/MagicPromptsSidebar';
 import { MagicPromptsPage } from '@/components/sections/magic-prompts/MagicPromptsPage';
 import { SnippetsSidebar } from '@/components/sections/snippets/SnippetsSidebar';
@@ -36,7 +36,8 @@ import { SnippetsPage } from '@/components/sections/snippets/SnippetsPage';
 import { GitPage } from '@/components/sections/git-identities/GitPage';
 import type { OpenChamberSection } from '@/components/sections/openchamber/types';
 import { OpenChamberPage } from '@/components/sections/openchamber/OpenChamberPage';
-import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
+// INTERNAL-NETWORK: AboutSettings import removed — About OpenChamber section
+// hidden.
 import { useDeviceInfo } from '@/lib/device';
 import { isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
@@ -98,12 +99,11 @@ const pageOrder: SettingsPageSlug[] = [
   'mcp',
   'plugins',
   'providers',
-  'usage',
+  // INTERNAL-NETWORK: 'usage' removed from visiblePageSlugs.
   'skills.installed',
   'skills.catalog',
   'voice',
-  'tunnel',
-  'about',
+  // INTERNAL-NETWORK: 'tunnel' and 'about' removed from visiblePageSlugs.
 ];
 
 const SNIPPETS_SETTINGS_ICON = { icon: 'chat-thread' } as const;
@@ -207,14 +207,9 @@ export function getSettingsNavIcon(slug: SettingsPageSlug): IconName | null {
     case 'git':
       return 'git-branch';
 
-    case 'usage':
-      return 'bar-chart-2';
+    // INTERNAL-NETWORK: 'usage' / 'tunnel' / 'about' icon cases removed.
     case 'voice':
       return 'mic';
-    case 'tunnel':
-      return 'global';
-    case 'about':
-      return 'information';
     case 'home':
       return null;
     default:
@@ -281,17 +276,7 @@ const SettingsHome: React.FC<{ onOpen: (slug: SettingsPageSlug) => void }> = ({ 
             <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.mcp.description')}</div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onOpen('usage')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.usage.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.usage.description')}</div>
-          </button>
+          {/* INTERNAL-NETWORK: Usage card removed — quota dashboard disabled. */}
         </div>
       </div>
     </div>
@@ -478,7 +463,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     sessions: 'sessions',
     notifications: 'notifications',
     voice: 'voice',
-    tunnel: 'tunnel',
+    // INTERNAL-NETWORK: 'tunnel' section removed.
   }), []);
 
   const getPageTitle = React.useCallback((slug: SettingsPageSlug): string => {
@@ -489,8 +474,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.remoteInstances.title');
       case 'providers':
         return t('settings.page.providers.title');
-      case 'usage':
-        return t('settings.page.usage.title');
+      // INTERNAL-NETWORK: 'usage' / 'tunnel' / 'about' title cases removed.
       case 'agents':
         return t('settings.page.agents.title');
       case 'behavior':
@@ -523,10 +507,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.notifications.title');
       case 'voice':
         return t('settings.page.voice.title');
-      case 'tunnel':
-        return t('settings.page.tunnel.title');
-      case 'about':
-        return t('settings.page.about.title');
       case 'home':
       default:
         return t('settings.view.home.title');
@@ -758,8 +738,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <SkillsSidebar onItemSelect={opts.onItemSelect} />;
       case 'providers':
         return <ProvidersSidebar onItemSelect={opts.onItemSelect} />;
-      case 'usage':
-        return <UsageSidebar onItemSelect={opts.onItemSelect} />;
+      // INTERNAL-NETWORK: 'usage' sidebar case removed — quota dashboard hidden.
       case 'magic-prompts':
         return <MagicPromptsSidebar onItemSelect={opts.onItemSelect} />;
       case 'snippets':
@@ -798,10 +777,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <SkillsPage view="catalog" />;
       case 'providers':
         return <ProvidersPage />;
-      case 'usage':
-        return <UsagePage />;
-      case 'about':
-        return <div className="h-full overflow-auto px-5 py-6"><AboutSettings /></div>;
+      // INTERNAL-NETWORK: 'usage' / 'about' page cases removed.
       case 'magic-prompts':
         return <MagicPromptsPage />;
       case 'snippets':
@@ -813,8 +789,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'shortcuts':
       case 'sessions':
       case 'notifications':
-      case 'voice':
-      case 'tunnel': {
+      case 'voice': {
         const section = openChamberSectionBySlug[slug] ?? 'visual';
         return <OpenChamberPage section={section} />;
       }
@@ -1030,7 +1005,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
                         : <Icon name={iconName!} className="h-4 w-4 shrink-0" />}
                       <span className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden transition-opacity duration-150 opacity-100">
                         <span className="typography-ui-label font-normal truncate">{getPageTitle(page.slug)}</span>
-                        {page.slug === 'tunnel' && (
+                        {(page.slug === 'voice') && (
                           <span className="shrink-0 typography-micro px-1 rounded leading-none pb-px text-[var(--status-warning)] bg-[var(--status-warning)]/10">
                             {t('settings.view.badge.beta')}
                           </span>

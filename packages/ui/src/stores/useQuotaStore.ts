@@ -162,60 +162,13 @@ export const useQuotaStore = create<QuotaStore>()(
       },
 
       fetchAllQuotas: async () => {
-        set({ isLoading: true, error: null });
-        const providerIds = QUOTA_PROVIDERS.map((provider) => provider.id);
-        try {
-          await Promise.all(
-            providerIds.map((providerId) => get().fetchProviderQuota(providerId))
-          );
-          set({
-            isLoading: false,
-            lastUpdated: Date.now()
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to fetch quotas';
-          set({ isLoading: false, error: message });
-        }
+        // INTERNAL-NETWORK: quota dashboard disabled. No /api/quota/* calls.
+        set({ isLoading: false, error: null, results: [] });
       },
 
-      fetchProviderQuota: async (providerId) => {
-        set((state) => ({
-          isFetchingProvider: { ...state.isFetchingProvider, [providerId]: true }
-        }));
-        try {
-          const response = await runtimeFetch(`/api/quota/${encodeURIComponent(providerId)}`);
-          const payload = await response.json().catch(() => null);
-          if (!response.ok) {
-            throw new Error(payload?.error || 'Failed to fetch quota');
-          }
-
-          const result = payload as ProviderResult;
-          set((state) => {
-            const next = state.results.filter((entry) => entry.providerId !== providerId);
-            next.push(result);
-            return { results: next, error: null };
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to fetch quota';
-          const fallback: ProviderResult = {
-            providerId,
-            providerName: providerId,
-            ok: false,
-            configured: false,
-            error: message,
-            usage: null,
-            fetchedAt: Date.now()
-          };
-          set((state) => {
-            const next = state.results.filter((entry) => entry.providerId !== providerId);
-            next.push(fallback);
-            return { results: next, error: message };
-          });
-        } finally {
-          set((state) => ({
-            isFetchingProvider: { ...state.isFetchingProvider, [providerId]: false }
-          }));
-        }
+      fetchProviderQuota: async (_providerId) => {
+        // INTERNAL-NETWORK: quota dashboard disabled. No /api/quota/* calls.
+        return;
       },
 
       setSelectedProvider: (providerId) => set({ selectedProviderId: providerId }),
@@ -290,19 +243,8 @@ export const useQuotaStore = create<QuotaStore>()(
 );
 
 export const useQuotaAutoRefresh = () => {
-  const autoRefresh = useQuotaStore((state) => state.autoRefresh);
-  const refreshIntervalMs = useQuotaStore((state) => state.refreshIntervalMs);
-  const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
-
+  // INTERNAL-NETWORK: quota dashboard disabled. No timer is ever scheduled.
   React.useEffect(() => {
-    if (!autoRefresh) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      fetchAllQuotas();
-    }, refreshIntervalMs);
-
-    return () => window.clearInterval(interval);
-  }, [autoRefresh, refreshIntervalMs, fetchAllQuotas]);
+    return undefined;
+  }, []);
 };

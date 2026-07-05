@@ -30,7 +30,7 @@ export const VALID_SETTINGS_SECTIONS: readonly SidebarSection[] = [
   'commands',
   'skills',
   'providers',
-  'usage',
+  // INTERNAL-NETWORK: 'usage' removed — quota dashboard hidden.
   'git-identities',
 ] as const;
 

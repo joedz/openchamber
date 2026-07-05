@@ -19,11 +19,12 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
     (set) => ({
       displayMode: 'minimal',
       showRecentSection: true,
-      // Default to HIDDEN so the pre-hydration state matches the quiet/safe
-      // option: archived sessions must never flash visible on startup and then
-      // disappear once the persisted preference rehydrates. Users who opted into
-      // showing archived have `true` persisted, which is preserved on rehydrate.
-      showArchivedSessions: false,
+      // INTERNAL-NETWORK: default to VISIBLE so the archived bucket appears
+      // in the sidebar immediately after the user archives a session. Without
+      // this, the session disappears from the active list and the user has
+      // no visual confirmation that the archive succeeded (the toggle in the
+      // sidebar header menu is hidden by default).
+      showArchivedSessions: true,
       setDisplayMode: (mode) => set({ displayMode: mode }),
       setShowRecentSection: (show) => set({ showRecentSection: show }),
       setShowArchivedSessions: (show) => set({ showArchivedSessions: show }),
@@ -32,14 +33,20 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
     }),
     {
       name: 'session-display-mode',
-      version: 1,
+      version: 2,
       // v0 shipped 'default' as the only/initial mode, so most existing users
       // have it persisted by accident rather than choice. Nudge everyone onto
       // minimal once so the mode can be evaluated before removing it entirely.
+      // INTERNAL-NETWORK: v2 also flips showArchivedSessions to true on
+      // rehydrate — without this, users who had `false` persisted from the
+      // pre-fix build would still see archived sessions hidden after archiving.
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<SessionDisplayStore>;
         if (version < 1) {
           return { ...state, displayMode: 'minimal' };
+        }
+        if (version < 2) {
+          return { ...state, showArchivedSessions: true };
         }
         return state;
       },

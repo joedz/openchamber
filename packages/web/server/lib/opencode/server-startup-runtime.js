@@ -70,48 +70,11 @@ export const createServerStartupRuntime = (dependencies) => {
           console.log(`Web interface: http://${displayHost}:${activePort}`);
 
           if (startupTunnelRequest) {
-            const startupModeLabel = startupTunnelRequest.mode === TUNNEL_MODE_QUICK
-              ? 'Quick Tunnel'
-              : (startupTunnelRequest.mode === TUNNEL_MODE_MANAGED_LOCAL
-                ? 'Managed Local Tunnel'
-                : (startupTunnelRequest.mode === TUNNEL_MODE_MANAGED_REMOTE ? 'Managed Remote Tunnel' : 'Tunnel'));
-            console.log(`\nInitializing ${startupModeLabel} for provider '${startupTunnelRequest.provider}'...`);
-            try {
-              const { publicUrl, mode } = await startTunnelWithNormalizedRequest({
-                provider: startupTunnelRequest.provider,
-                mode: startupTunnelRequest.mode,
-                intent: startupTunnelRequest.intent,
-                hostname: startupTunnelRequest.hostname,
-                token: startupTunnelRequest.token,
-                configPath: startupTunnelRequest.configPath,
-                selectedPresetId: '',
-                selectedPresetName: '',
-              });
-              if (publicUrl) {
-                tunnelAuthController.setActiveTunnel({
-                  tunnelId: crypto.randomUUID(),
-                  publicUrl,
-                  mode,
-                });
-                const settings = await readSettingsFromDiskMigrated();
-                const bootstrapTtlMs = settings?.tunnelBootstrapTtlMs === null
-                  ? null
-                  : normalizeTunnelBootstrapTtlMs(settings?.tunnelBootstrapTtlMs);
-                const bootstrapToken = tunnelAuthController.issueBootstrapToken({ ttlMs: bootstrapTtlMs });
-                const connectUrl = `${publicUrl.replace(/\/$/, '')}/connect?t=${encodeURIComponent(bootstrapToken.token)}`;
-                if (onTunnelReady) {
-                  onTunnelReady(publicUrl, connectUrl);
-                } else {
-                  console.log(`\n🌐 Tunnel URL: ${connectUrl}`);
-                  console.log('🔑 One-time connect link (expires after first use)\n');
-                }
-              } else if (onTunnelReady) {
-                onTunnelReady(publicUrl, null);
-              }
-            } catch (error) {
-              console.error(`Failed to start tunnel: ${error.message}`);
-              console.log('Continuing without tunnel...');
-            }
+            // INTERNAL-NETWORK: startup-tunnel requests are ignored. The
+            // tunnel service would throw tunnels_disabled anyway; we skip
+            // even calling it so the server starts cleanly regardless of CLI
+            // flags like --try-cf-tunnel or --tunnel-mode.
+            console.log(`\nTunnel startup request for provider '${startupTunnelRequest.provider}' ignored (tunnels are disabled in this deployment).`);
           }
 
           resolve();

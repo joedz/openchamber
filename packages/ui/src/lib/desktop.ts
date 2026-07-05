@@ -170,8 +170,7 @@ export type DesktopSettings = {
 
   // User-added skills catalogs (persisted to ~/.config/openchamber/settings.json)
   skillCatalogs?: SkillCatalogConfig[];
-  // Opt-in to send anonymous usage reports for update checks (default: true)
-  reportUsage?: boolean;
+  // INTERNAL-NETWORK: reportUsage field removed — anonymous telemetry disabled.
 
   // Global behavior prompt — synced to ~/.config/opencode/AGENTS.md
   globalBehaviorPrompt?: string;

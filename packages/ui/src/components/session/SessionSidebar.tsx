@@ -34,7 +34,8 @@ import { useSessionFolderCleanup } from './sidebar/hooks/useSessionFolderCleanup
 import { useStickyProjectHeaders } from './sidebar/hooks/useStickyProjectHeaders';
 import { getGitHubPrStatusKey, usePrVisualSummaryByKeys, useGitHubPrStatusStore } from '@/stores/useGitHubPrStatusStore';
 import { ProjectEditDialog } from '@/components/layout/ProjectEditDialog';
-import { UpdateDialog } from '@/components/ui/UpdateDialog';
+// INTERNAL-NETWORK: import of <UpdateDialog> removed — no sidebar entry
+// point opens it.
 import { SessionGroupSection } from './sidebar/SessionGroupSection';
 import { SidebarHeader } from './sidebar/SidebarHeader';
 import { SidebarActivitySections } from './sidebar/SidebarActivitySections';
@@ -195,7 +196,8 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const [visibleSessionCountByGroup, setVisibleSessionCountByGroup] = React.useState<Map<string, number>>(new Map());
   const newWorktreeDialogOpen = useUIStore((state) => state.isNewWorktreeDialogOpen);
   const setNewWorktreeDialogOpen = useUIStore((state) => state.setNewWorktreeDialogOpen);
-  const [updateDialogOpen, setUpdateDialogOpen] = React.useState(false);
+  // INTERNAL-NETWORK: updateDialogOpen state removed — <UpdateDialog> is no
+  // longer rendered.
   const [openSidebarMenuKey, setOpenSidebarMenuKey] = React.useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = React.useState<string | null>(null);
   const [renameFolderDraft, setRenameFolderDraft] = React.useState('');
@@ -273,7 +275,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
   const toggleHelpDialog = useUIStore((state) => state.toggleHelpDialog);
-  const setAboutDialogOpen = useUIStore((state) => state.setAboutDialogOpen);
+  // INTERNAL-NETWORK: setAboutDialogOpen reference removed.
   const setSessionSwitcherOpen = useUIStore((state) => state.setSessionSwitcherOpen);
   const setScheduledTasksDialogOpen = useUIStore((state) => state.setScheduledTasksDialogOpen);
   const openMultiRunLauncher = useUIStore((state) => state.openMultiRunLauncher);
@@ -614,26 +616,8 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     setNewWorktreeDialogOpen(true);
   }, [setNewWorktreeDialogOpen]);
 
-  const handleOpenUpdateDialog = React.useCallback(() => {
-    const current = useUpdateStore.getState();
-    if (current.available && current.info) {
-      setUpdateDialogOpen(true);
-      return;
-    }
-
-    void updateStore.checkForUpdates().then(() => {
-      const { available, error } = useUpdateStore.getState();
-      if (error) {
-        toast.error(t('sessions.sidebar.updateCheck.errorTitle'), { description: error });
-        return;
-      }
-      if (!available) {
-        toast.success(t('sessions.sidebar.updateCheck.latestVersion'));
-        return;
-      }
-      setUpdateDialogOpen(true);
-    });
-  }, [t, updateStore]);
+  // INTERNAL-NETWORK: handleOpenUpdateDialog removed — the sidebar's update
+  // button is hidden (showUpdateButton={false}).
 
   const handleOpenSettings = React.useCallback(() => {
     if (mobileVariant) {
@@ -1617,24 +1601,13 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
       <SidebarFooter
         onOpenSettings={handleOpenSettings}
         onOpenShortcuts={toggleHelpDialog}
-        onOpenAbout={() => setAboutDialogOpen(true)}
-        onOpenUpdate={handleOpenUpdateDialog}
         showRuntimeButtons={!isVSCode}
-        showUpdateButton={showSidebarUpdateButton}
+        // INTERNAL-NETWORK: onOpenAbout prop omitted — About OpenChamber
+        // dialog removed.
+        showUpdateButton={false}
       />
 
-      <UpdateDialog
-        open={updateDialogOpen}
-        onOpenChange={setUpdateDialogOpen}
-        info={updateStore.info}
-        downloading={updateStore.downloading}
-        downloaded={updateStore.downloaded}
-        progress={updateStore.progress}
-        error={updateStore.error}
-        onDownload={updateStore.downloadUpdate}
-        onRestart={updateStore.restartToUpdate}
-        runtimeType={updateStore.runtimeType}
-      />
+      {/* INTERNAL-NETWORK: <UpdateDialog> removed — no button opens it. */}
 
       {editingProject ? (
         <ProjectEditDialog

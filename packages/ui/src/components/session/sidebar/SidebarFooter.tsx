@@ -7,8 +7,11 @@ import { useI18n } from '@/lib/i18n';
 type Props = {
   onOpenSettings: () => void;
   onOpenShortcuts: () => void;
-  onOpenAbout: () => void;
-  onOpenUpdate: () => void;
+  // INTERNAL-NETWORK: onOpenAbout is optional now that About OpenChamber is hidden.
+  onOpenAbout?: () => void;
+  // INTERNAL-NETWORK: onOpenUpdate is optional now that the update button is
+  // hidden (showUpdateButton is forced false on the only call site).
+  onOpenUpdate?: () => void;
   showRuntimeButtons?: boolean;
   showUpdateButton?: boolean;
 };
@@ -45,14 +48,7 @@ export function SidebarFooter({
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={4}><p>{t('sessions.sidebar.footer.actions.shortcuts')}</p></TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" onClick={onOpenAbout} className={footerButtonClassName} aria-label={t('sessions.sidebar.footer.actions.aboutOpenChamber')}>
-                <Icon name="information" className="h-4.5 w-4.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={4}><p>{t('sessions.sidebar.footer.actions.aboutOpenChamber')}</p></TooltipContent>
-          </Tooltip>
+          {/* INTERNAL-NETWORK: About OpenChamber button removed. */}
         </>
       ) : null}
       {showUpdateButton ? (

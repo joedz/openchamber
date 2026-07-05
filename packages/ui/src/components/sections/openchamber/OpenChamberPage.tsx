@@ -1,6 +1,6 @@
 import React from 'react';
 import { OpenChamberVisualSettings } from './OpenChamberVisualSettings';
-import { AboutSettings } from './AboutSettings';
+// INTERNAL-NETWORK: AboutSettings import removed.
 import { SessionRetentionSettings } from './SessionRetentionSettings';
 import { PasskeySettings } from './PasskeySettings';
 import { DefaultsSettings } from './DefaultsSettings';
@@ -8,7 +8,7 @@ import { GitSettings } from './GitSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { GitHubSettings } from './GitHubSettings';
 import { VoiceSettings } from './VoiceSettings';
-import { TunnelSettings } from './TunnelSettings';
+// INTERNAL-NETWORK: import of TunnelSettings removed — section is hidden.
 import { OpenCodeCliSettings } from './OpenCodeCliSettings';
 import { DesktopNetworkSettings } from './DesktopNetworkSettings';
 import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
@@ -69,11 +69,7 @@ export const OpenChamberPage: React.FC<OpenChamberPageProps> = ({ section }) => 
                     <div className="border-t border-border/40 pt-6">
                         <PasskeySettings />
                     </div>
-                    {showAbout && (
-                        <div className="border-t border-border/40 pt-6">
-                            <AboutSettings />
-                        </div>
-                    )}
+                    {/* INTERNAL-NETWORK: showAbout / <AboutSettings /> block removed. */}
                 </div>
             </ScrollableOverlay>
         );
@@ -138,7 +134,7 @@ const VisualSectionContent: React.FC = () => {
         'inputBarOffset',
         'expandedEditorToolbar',
         ...(!isVSCode ? ['terminalQuickKeys' as const] : []),
-        'reportUsage',
+        // INTERNAL-NETWORK: 'reportUsage' removed.
     ]} />;
 };
 
@@ -207,8 +203,6 @@ const VoiceSectionContent: React.FC = () => {
 };
 
 const TunnelSectionContent: React.FC = () => {
-    if (isVSCodeRuntime()) {
-        return null;
-    }
-    return <TunnelSettings />;
+    // INTERNAL-NETWORK: TunnelSettings section hidden entirely.
+    return null;
 };

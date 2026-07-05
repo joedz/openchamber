@@ -41,7 +41,7 @@ import { resumeAutoReviewRun } from '@/lib/reviewFlow';
 import { SyncProvider } from '@/sync/sync-context';
 import { useSync } from '@/sync/use-sync';
 import { ConfigUpdateOverlay } from '@/components/ui/ConfigUpdateOverlay';
-import { AboutDialog } from '@/components/ui/AboutDialog';
+// INTERNAL-NETWORK: AboutDialog import removed — About OpenChamber hidden.
 import { RuntimeAPIProvider } from '@/contexts/RuntimeAPIProvider';
 import { registerRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import { useUIStore } from '@/stores/useUIStore';
@@ -65,16 +65,7 @@ const OnboardingScreen = lazyWithChunkRecovery(() =>
   import('@/components/onboarding/OnboardingScreen').then((m) => ({ default: m.OnboardingScreen })),
 );
 
-const AboutDialogWrapper: React.FC = () => {
-  const isAboutDialogOpen = useUIStore((s) => s.isAboutDialogOpen);
-  const setAboutDialogOpen = useUIStore((s) => s.setAboutDialogOpen);
-  return (
-    <AboutDialog
-      open={isAboutDialogOpen}
-      onOpenChange={setAboutDialogOpen}
-    />
-  );
-};
+// INTERNAL-NETWORK: AboutDialogWrapper component removed.
 
 const StartupInitializationRecovery: React.FC<{
   onRetry: () => void;
@@ -945,7 +936,7 @@ function App({ apis }: AppProps) {
                   {!isBootShell && (
                     <>
                       <ConfigUpdateOverlay />
-                      <AboutDialogWrapper />
+                      {/* INTERNAL-NETWORK: <AboutDialogWrapper /> removed. */}
                       {showMemoryDebug && (
                         <MemoryDebugPanel onClose={() => setShowMemoryDebug(false)} />
                       )}

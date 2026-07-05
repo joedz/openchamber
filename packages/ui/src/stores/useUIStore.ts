@@ -542,7 +542,7 @@ interface UIStore {
   isMobile: boolean;
   isCommandPaletteOpen: boolean;
   isHelpDialogOpen: boolean;
-  isAboutDialogOpen: boolean;
+  // INTERNAL-NETWORK: isAboutDialogOpen field removed — About OpenChamber hidden.
   isOpenCodeStatusDialogOpen: boolean;
   openCodeStatusText: string;
   isSessionCreateDialogOpen: boolean;
@@ -641,7 +641,7 @@ interface UIStore {
   mobileSessionPanelOpen: boolean;
   mobileSessionFilterProjectId: string | null;
   isExpandedInput: boolean;
-  reportUsage: boolean;
+  // INTERNAL-NETWORK: reportUsage field removed.
   shortcutOverrides: Record<string, ShortcutCombo>;
   fileEditorKeymap: FileEditorKeymap;
 
@@ -693,7 +693,7 @@ interface UIStore {
   setCommandPaletteOpen: (open: boolean) => void;
   toggleHelpDialog: () => void;
   setHelpDialogOpen: (open: boolean) => void;
-  setAboutDialogOpen: (open: boolean) => void;
+  // INTERNAL-NETWORK: setAboutDialogOpen action removed.
   setOpenCodeStatusDialogOpen: (open: boolean) => void;
   setOpenCodeStatusText: (text: string) => void;
   setSessionCreateDialogOpen: (open: boolean) => void;
@@ -792,7 +792,7 @@ interface UIStore {
   setExpandedInput: (value: boolean) => void;
   openMultiRunLauncher: () => void;
   openMultiRunLauncherWithPrompt: (prompt: string) => void;
-  setReportUsage: (value: boolean) => void;
+  // INTERNAL-NETWORK: setReportUsage action signature removed.
   setShortcutOverride: (actionId: string, combo: ShortcutCombo) => void;
   clearShortcutOverride: (actionId: string) => void;
   resetAllShortcutOverrides: () => void;
@@ -835,7 +835,7 @@ export const useUIStore = create<UIStore>()(
         isMobile: false,
         isCommandPaletteOpen: false,
         isHelpDialogOpen: false,
-        isAboutDialogOpen: false,
+        // INTERNAL-NETWORK: isAboutDialogOpen initial value removed.
         isOpenCodeStatusDialogOpen: false,
         openCodeStatusText: '',
         isSessionCreateDialogOpen: false,
@@ -926,7 +926,7 @@ export const useUIStore = create<UIStore>()(
         mobileSessionPanelOpen: false,
         mobileSessionFilterProjectId: null,
         isExpandedInput: false,
-        reportUsage: true,
+        // INTERNAL-NETWORK: reportUsage initial value removed.
         shortcutOverrides: {},
         fileEditorKeymap: 'default',
 
@@ -1476,9 +1476,7 @@ export const useUIStore = create<UIStore>()(
           set({ isHelpDialogOpen: open });
         },
 
-        setAboutDialogOpen: (open) => {
-          set({ isAboutDialogOpen: open });
-        },
+        // INTERNAL-NETWORK: setAboutDialogOpen action body removed.
 
         setOpenCodeStatusDialogOpen: (open) => {
           set({ isOpenCodeStatusDialogOpen: open });
@@ -2056,9 +2054,7 @@ export const useUIStore = create<UIStore>()(
         setMobileSessionFilterProjectId: (value) => {
           set({ mobileSessionFilterProjectId: value });
         },
-        setReportUsage: (value) => {
-          set({ reportUsage: value });
-        },
+        // INTERNAL-NETWORK: setReportUsage action removed.
         viewPagerPage: 'center',
         setViewPagerPage: (page: 'left' | 'center' | 'right') => {
           set({ viewPagerPage: page });

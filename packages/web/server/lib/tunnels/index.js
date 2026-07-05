@@ -63,87 +63,10 @@ export function createTunnelService({
   // Mutex to prevent concurrent tunnel starts from orphaning child processes.
   let startLock = Promise.resolve();
 
-  const start = async (rawRequest, options = {}) => {
-    let releaseLock;
-    const lockPromise = new Promise((resolve) => { releaseLock = resolve; });
-    const previousLock = startLock;
-    startLock = lockPromise;
-
-    await previousLock;
-
-    try {
-      const request = normalizeTunnelStartRequest(rawRequest);
-      const provider = registry.get(request.provider);
-
-      if (!provider) {
-        throw new TunnelServiceError('provider_unsupported', `Unsupported tunnel provider: ${request.provider}`);
-      }
-
-      validateTunnelStartRequest(request, provider.capabilities);
-
-      let publicUrl = provider.resolvePublicUrl(getController());
-      const activeMode = resolveActiveMode();
-      const activeProvider = resolveActiveProvider();
-
-      if (publicUrl && (activeMode !== request.mode || activeProvider !== request.provider)) {
-        stop();
-        publicUrl = null;
-      }
-
-      if (!publicUrl) {
-        const availability = await provider.checkAvailability();
-        if (!availability?.available) {
-          const missingDependencyMessage = typeof availability?.message === 'string' && availability.message.trim().length > 0
-            ? availability.message
-            : (request.provider === TUNNEL_PROVIDER_CLOUDFLARE
-              ? getTunnelDependencyInstallInfo(TUNNEL_PROVIDER_CLOUDFLARE).message
-              : `Required dependency for provider '${request.provider}' is missing`);
-          throw new TunnelServiceError('missing_dependency', missingDependencyMessage);
-        }
-
-        const activePort = Number.isFinite(getActivePort?.()) ? getActivePort() : null;
-        const originUrl = activePort !== null ? `http://127.0.0.1:${activePort}` : undefined;
-
-        let controller;
-        try {
-          controller = await provider.start(request, {
-            activePort,
-            originUrl,
-            ...options,
-          });
-        } catch (error) {
-          if (error instanceof TunnelServiceError) {
-            throw error;
-          }
-          const message = error instanceof Error && error.message.trim().length > 0
-            ? error.message
-            : 'Failed to start tunnel';
-          throw new TunnelServiceError('startup_failed', message);
-        }
-        controller.provider = request.provider;
-        setController(controller);
-
-        publicUrl = provider.resolvePublicUrl(controller);
-        if (!publicUrl) {
-          stop();
-          throw new TunnelServiceError('startup_failed', 'Tunnel started but no public URL was assigned');
-        }
-
-        if (request.mode === TUNNEL_MODE_QUICK) {
-          onQuickTunnelWarning?.();
-        }
-      }
-
-      return {
-        publicUrl,
-        request,
-        activeMode: request.mode,
-        provider: request.provider,
-        providerMetadata: provider.getMetadata?.(getController()) ?? null,
-      };
-    } finally {
-      releaseLock();
-    }
+  const start = async (_rawRequest, _options = {}) => {
+    // INTERNAL-NETWORK: tunnels disabled — no provider is ever spawned, no
+    // binary (cloudflared / ngrok) ever executes.
+    throw new TunnelServiceError('tunnels_disabled', 'Tunnels are disabled in this deployment');
   };
 
   const getPublicUrl = () => {

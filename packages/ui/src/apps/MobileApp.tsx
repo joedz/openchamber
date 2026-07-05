@@ -4,7 +4,7 @@ import { Icon } from '@/components/icon/Icon';
 import type { IconName } from '@/components/icon/icons';
 import { McpIcon } from '@/components/icons/McpIcon';
 import { McpDropdownContent } from '@/components/mcp/McpDropdown';
-import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
+// INTERNAL-NETWORK: AboutSettings import removed.
 import { OpenCodeUpdateToast } from '@/components/update/OpenCodeUpdateToast';
 import { ConfigUpdateOverlay } from '@/components/ui/ConfigUpdateOverlay';
 import { Button } from '@/components/ui/button';
@@ -76,9 +76,9 @@ const MOBILE_SETTINGS_PAGES = [
   'behavior',
   'mcp',
   'providers',
-  'usage',
+  // INTERNAL-NETWORK: 'usage' removed — quota dashboard disabled.
   'voice',
-  'about',
+  // INTERNAL-NETWORK: 'about' removed — About OpenChamber section hidden.
 ] as const;
 
 type MobileAppProps = {
@@ -2148,7 +2148,7 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
           >
             <ErrorBoundary>
               <div className="h-full overflow-auto px-5 py-4">
-                <AboutSettings initialUpdateDialogOpen />
+                {/* INTERNAL-NETWORK: <AboutSettings /> removed — About OpenChamber hidden. */}
               </div>
             </ErrorBoundary>
           </MobileSurfaceShell>

@@ -74,10 +74,8 @@ function detectPlatform(): 'macos' | 'windows' | 'linux' | 'web' {
 }
 
 function mapRuntimeParams(runtime: ClientRuntime): URLSearchParams {
-  // Check if user has opted out of usage reporting (default: true/enabled from UI store)
-  const shouldReportUsage = useUIStore.getState().reportUsage;
-  
-  const params = new URLSearchParams({ reportUsage: shouldReportUsage ? 'true' : 'false' });
+  // INTERNAL-NETWORK: reportUsage always false — anonymous telemetry disabled.
+  const params = new URLSearchParams({ reportUsage: 'false' });
   params.set('deviceClass', detectDeviceClass());
   params.set('arch', detectArch());
   params.set('platform', detectPlatform());
@@ -98,40 +96,18 @@ function mapRuntimeParams(runtime: ClientRuntime): URLSearchParams {
   return params;
 }
 
-async function checkForWebUpdates(runtime: ClientRuntime, currentVersion?: string): Promise<UpdateInfo | null> {
-  try {
-    const params = mapRuntimeParams(runtime);
-    const vscodeVersion = typeof window !== 'undefined'
-      ? (window as { __VSCODE_CONFIG__?: { extensionVersion?: string } }).__VSCODE_CONFIG__?.extensionVersion
-      : undefined;
-    if (currentVersion) params.set('currentVersion', currentVersion);
-    else if (runtime === 'vscode' && vscodeVersion) params.set('currentVersion', vscodeVersion);
-    const response = await runtimeFetch(`/api/openchamber/update-check?${params.toString()}`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server responded with ${response.status}`);
-    }
-
-    const data = await response.json();
-    return {
-      available: data.available ?? false,
-      version: data.version,
-      currentVersion: data.currentVersion ?? 'unknown',
-      body: data.body,
-      nextSuggestedCheckInSec:
-        typeof data.nextSuggestedCheckInSec === 'number' && Number.isFinite(data.nextSuggestedCheckInSec)
-          ? data.nextSuggestedCheckInSec
-          : undefined,
-      packageManager: data.packageManager,
-      updateCommand: data.updateCommand,
-    };
-  } catch (error) {
-    console.warn('Failed to check for updates:', error);
-    return null;
-  }
+async function checkForWebUpdates(_runtime: ClientRuntime, currentVersion?: string): Promise<UpdateInfo | null> {
+  // INTERNAL-NETWORK: external update channel disabled. Skip the fetch
+  // entirely and report no update available so the UI never offers one.
+  return {
+    available: false,
+    version: undefined,
+    currentVersion: currentVersion ?? 'unknown',
+    body: undefined,
+    nextSuggestedCheckInSec: undefined,
+    packageManager: undefined,
+    updateCommand: undefined,
+  };
 }
 
 function detectRuntimeType(): 'desktop' | 'web' | 'vscode' | null {
@@ -160,49 +136,17 @@ export const useUpdateStore = create<UpdateStore>()((set, get) => ({
   ...initialState,
 
   checkForUpdates: async () => {
-    const runtime = detectRuntimeType();
-    if (!runtime) return null;
-
-    set({ checking: true, error: null, runtimeType: runtime });
-
-    try {
-      let info: UpdateInfo | null = null;
-      let suggestedSec: number | null = null;
-
-      if (runtime === 'desktop') {
-        const desktopInfo = await checkForDesktopUpdates();
-        set({
-          checking: false,
-          available: desktopInfo?.available ?? false,
-          info: desktopInfo,
-          lastChecked: Date.now(),
-          nextCheckInSec: null,
-        });
-
-        return suggestedSec;
-      } else if (runtime === 'web') {
-        info = await checkForWebUpdates('web');
-        suggestedSec = info?.nextSuggestedCheckInSec ?? null;
-      } else if (runtime === 'vscode') {
-        const vscodeInfo = await checkForWebUpdates('vscode');
-        suggestedSec = vscodeInfo?.nextSuggestedCheckInSec ?? null;
-      }
-
-      set({
-        checking: false,
-        available: runtime === 'vscode' ? false : (info?.available ?? false),
-        info: runtime === 'vscode' ? null : info,
-        lastChecked: Date.now(),
-        nextCheckInSec: suggestedSec,
-      });
-      return suggestedSec;
-    } catch (error) {
-      set({
-        checking: false,
-        error: error instanceof Error ? error.message : 'Failed to check for updates',
-      });
-      return null;
-    }
+    // INTERNAL-NETWORK: external update channel disabled. Surface no update.
+    set({
+      checking: false,
+      available: false,
+      info: null,
+      error: null,
+      lastChecked: Date.now(),
+      nextCheckInSec: null,
+      runtimeType: detectRuntimeType(),
+    });
+    return null;
   },
 
   downloadUpdate: async () => {

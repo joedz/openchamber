@@ -155,7 +155,7 @@ const LOCAL_HOST_ID = 'local';
 const LOCAL_DESKTOP_CLIENT_KIND = 'desktop-local';
 const LOCAL_DESKTOP_CLIENT_DEDUPE_KEY = 'desktop-local';
 const ENV_OVERRIDE_HOST_ID = '__env';
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/openchamber/openchamber/main/CHANGELOG.md';
+const CHANGELOG_URL = ''; // INTERNAL-NETWORK: external CHANGELOG fetch disabled.
 const GITHUB_BUG_REPORT_URL = 'https://github.com/openchamber/openchamber/issues/new?template=bug_report.yml';
 const GITHUB_FEATURE_REQUEST_URL = 'https://github.com/openchamber/openchamber/issues/new?template=feature_request.yml';
 const DISCORD_INVITE_URL = 'https://discord.gg/ZYRSdnwwKA';
@@ -1920,12 +1920,8 @@ const dispatchOpenMiniChat = (browserWindow) => {
   if (target) emitToWindow(target, 'openchamber:open-mini-chat');
 };
 
-const dispatchCheckForUpdates = () => {
-  emitToAllWindows('openchamber:check-for-updates');
-  for (const browserWindow of BrowserWindow.getAllWindows()) {
-    dispatchDomEventToWindow(browserWindow, 'openchamber:check-for-updates');
-  }
-};
+// INTERNAL-NETWORK: dispatchCheckForUpdates removed — external update channel
+// disabled.
 
 const reloadMenuTargetWindow = () => {
   const target = getMenuTargetWindow();
@@ -2578,68 +2574,17 @@ const parseGithubRepo = () => {
 };
 
 const setupAutoUpdater = () => {
+  // INTERNAL-NETWORK: external update channel disabled. autoUpdater is never
+  // configured, never calls setFeedURL, never queries github.com/openchamber.
   if (!app.isPackaged) {
     return;
   }
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = false;
-  autoUpdater.allowPrerelease = false;
-  autoUpdater.fullChangelog = true;
-  autoUpdater.disableWebInstaller = false;
-  autoUpdater.logger = log;
-
-  const { owner, repo } = parseGithubRepo();
-  autoUpdater.setFeedURL({
-    provider: 'github',
-    owner,
-    repo,
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    const total = Number(progress.total || 0);
-    const transferred = Number(progress.transferred || 0);
-    setTaskbarProgress(total > 0 ? Math.max(0, Math.min(1, transferred / total)) : 0.01);
-    emitToAllWindows('openchamber:update-progress', mapUpdaterProgressEvent({
-      event: 'Progress',
-      data: {
-        chunkLength: Math.max(0, Math.round(progress.bytesPerSecond || 0)),
-        downloaded: Math.round(progress.transferred || 0),
-        total: Math.round(progress.total || 0),
-      },
-    }));
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    log.info(`[electron] update-downloaded version=${info?.version || 'unknown'}`);
-    setTaskbarProgress(-1);
-    if (state.pendingUpdate) {
-      state.pendingUpdate.downloaded = true;
-    }
-  });
-
-  autoUpdater.on('error', (err) => {
-    setTaskbarProgress(-1);
-    log.error('[electron] autoUpdater error', err);
-  });
 };
 
-const parseRelevantChangelogNotes = async (fromVersion, toVersion) => {
-  try {
-    const response = await fetch(CHANGELOG_URL, { signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) return null;
-    const changelog = await response.text();
-    const sections = changelog.split(/^##\s+\[/m).slice(1);
-    const relevant = [];
-    for (const section of sections) {
-      const version = section.split(']')[0];
-      if (compareSemver(version, fromVersion) > 0 && compareSemver(version, toVersion) <= 0) {
-        relevant.push(`## [${section}`.trim());
-      }
-    }
-    return relevant.length > 0 ? relevant.join('\n\n') : null;
-  } catch {
-    return null;
-  }
+const parseRelevantChangelogNotes = async () => {
+  // INTERNAL-NETWORK: external update channel disabled. Never fetch the
+  // GitHub raw CHANGELOG.md.
+  return null;
 };
 
 const buildInstalledAppsCachePath = () => path.join(path.dirname(settingsFilePath()), INSTALLED_APPS_CACHE_FILE);
@@ -3636,30 +3581,15 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     }
 
     case 'desktop_check_for_updates': {
-      const currentVersion = APP_VERSION;
-      let updateResult = null;
-      try {
-        updateResult = await autoUpdater.checkForUpdates();
-      } catch {
-      }
-
-      const updateInfo = updateResult?.updateInfo;
-      const nextVersion =
-        (typeof updateInfo?.version === 'string' && updateInfo.version) ||
-        currentVersion;
-      const available = compareSemver(nextVersion, currentVersion) > 0;
-      const body =
-        (typeof updateInfo?.releaseNotes === 'string' && updateInfo.releaseNotes.trim() ? updateInfo.releaseNotes : null) ||
-        await parseRelevantChangelogNotes(currentVersion, nextVersion);
-      state.pendingUpdate = available ? { version: nextVersion, electronUpdate: updateResult } : null;
+      // INTERNAL-NETWORK: external update channel disabled. Skip autoUpdater
+      // entirely and return no update available.
       return {
-        available,
-        currentVersion,
-        version: available ? nextVersion : null,
-        body: body || null,
-        date:
-          (typeof updateInfo?.releaseDate === 'string' && updateInfo.releaseDate) ||
-          null,
+        available: false,
+        currentVersion: APP_VERSION,
+        version: null,
+        body: null,
+        date: null,
+        disabled: true,
       };
     }
 
@@ -3937,11 +3867,8 @@ const buildMacMenu = () => {
     {
       label: app.name,
       submenu: [
-        { label: 'About OpenChamber', click: () => dispatchAction('about') },
-        {
-          label: 'Check for Updates',
-          click: () => dispatchCheckForUpdates(),
-        },
+        // INTERNAL-NETWORK: "About OpenChamber" menu item removed.
+        // INTERNAL-NETWORK: "Check for Updates" menu item removed.
         { type: 'separator' },
         { label: 'Settings', accelerator: 'Cmd+,', click: () => dispatchAction('settings') },
         { label: 'Reload Webview', click: () => reloadMenuTargetWindow() },
@@ -4042,11 +3969,8 @@ const buildAutoHiddenMenu = () => {
     {
       label: 'OpenChamber',
       submenu: [
-        { label: 'About OpenChamber', click: () => dispatchAction('about') },
-        {
-          label: 'Check for Updates',
-          click: () => dispatchCheckForUpdates(),
-        },
+        // INTERNAL-NETWORK: "About OpenChamber" menu item removed.
+        // INTERNAL-NETWORK: "Check for Updates" menu item removed.
         { type: 'separator' },
         { label: 'Settings', accelerator: 'Ctrl+,', click: () => dispatchAction('settings') },
         { label: 'Reload Webview', click: () => reloadMenuTargetWindow() },

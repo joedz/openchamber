@@ -1,9 +1,7 @@
 import React from 'react';
 import { useUpdateStore } from '@/stores/useUpdateStore';
 import { useShallow } from 'zustand/react/shallow';
-import { UpdateDialog } from '@/components/ui/UpdateDialog';
 import { useDeviceInfo } from '@/lib/device';
-import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Icon } from "@/components/icon/Icon";
 import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
@@ -14,16 +12,14 @@ const GITHUB_URL = 'https://github.com/openchamber/openchamber';
 const DISCORD_URL = 'https://discord.gg/ZYRSdnwwKA';
 const X_URL = 'https://x.com/openchamber_dev';
 
-const MIN_CHECKING_DURATION = 800; // ms
-
 type AboutSettingsProps = {
   initialUpdateDialogOpen?: boolean;
 };
 
 export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialogOpen = false }) => {
   const { t } = useI18n();
-  const [updateDialogOpen, setUpdateDialogOpen] = React.useState(initialUpdateDialogOpen);
-  const [showChecking, setShowChecking] = React.useState(false);
+  // INTERNAL-NETWORK: updateDialogOpen + showChecking state removed (no
+  // update dialog or checking animation).
   const [openChamberVersion, setOpenChamberVersion] = React.useState<string | null>(null);
   const [openCodeVersion, setOpenCodeVersion] = React.useState<string | null>(null);
   const updateStore = useUpdateStore(useShallow((s) => ({
@@ -97,28 +93,9 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
     };
   }, []);
 
-  // Track if we initiated a check to show toast on completion
-  const didInitiateCheck = React.useRef(false);
-
-  // Ensure minimum visible duration for checking animation
-  React.useEffect(() => {
-    if (updateStore.checking) {
-      setShowChecking(true);
-      didInitiateCheck.current = true;
-    } else if (showChecking) {
-      const timer = setTimeout(() => {
-        setShowChecking(false);
-        // Show toast if check completed with no update available
-        if (didInitiateCheck.current && !updateStore.available && !updateStore.error) {
-          toast.success(t('settings.openchamber.about.toast.latestVersion'));
-          didInitiateCheck.current = false;
-        }
-      }, MIN_CHECKING_DURATION);
-      return () => clearTimeout(timer);
-    }
-  }, [t, updateStore.checking, showChecking, updateStore.available, updateStore.error]);
-
-  const isChecking = updateStore.checking || showChecking;
+  // INTERNAL-NETWORK: "checking animation" + completion toast removed — the
+  // "Check for updates" button is hidden and the store action is a no-op.
+  const isChecking = updateStore.checking;
 
   if (isMobile) {
     return (
@@ -132,34 +109,8 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           </div>
         </div>
 
-        <div className="flex justify-center">
-          {!updateStore.available && !updateStore.error && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => updateStore.checkForUpdates()}
-              disabled={isChecking}
-              className="h-10 w-auto justify-center gap-2 rounded-xl px-4"
-            >
-              {isChecking ? <Icon name="loader" className="size-4 animate-spin" /> : <Icon name="refresh" className="size-4" />}
-              {isChecking ? t('settings.openchamber.about.state.checking') : t('settings.openchamber.about.actions.checkForUpdates')}
-            </Button>
-          )}
-
-          {!isChecking && updateStore.available && (
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={() => setUpdateDialogOpen(true)}
-              className="h-10 w-auto justify-center gap-2 rounded-xl px-4"
-            >
-              <Icon name="download" className="size-4" />
-              {t('settings.openchamber.about.actions.updateToVersion', { version: updateStore.info?.version || '' })}
-            </Button>
-          )}
-        </div>
+        {/* INTERNAL-NETWORK: "Check for updates" + "Update to version" buttons removed
+            from the mobile AboutSettings layout (external update channel disabled). */}
 
         {updateStore.error && (
           <p className="rounded-xl border border-[var(--status-error-border)] bg-[var(--status-error-background)] px-3 py-2 typography-meta text-[var(--status-error)]">
@@ -205,18 +156,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           {t('aboutDialog.footerNote')}
         </p>
 
-        <UpdateDialog
-          open={updateDialogOpen}
-          onOpenChange={setUpdateDialogOpen}
-          info={updateStore.info}
-          downloading={updateStore.downloading}
-          downloaded={updateStore.downloaded}
-          progress={updateStore.progress}
-          error={updateStore.error}
-          onDownload={updateStore.downloadUpdate}
-          onRestart={updateStore.restartToUpdate}
-          runtimeType={updateStore.runtimeType}
-        />
+        {/* INTERNAL-NETWORK: <UpdateDialog> removed — no button opens it. */}
       </div>
     );
   }
@@ -249,27 +189,12 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
               </div>
             )}
 
-            {!updateStore.checking && updateStore.available && (
-              <Button size="sm"
-                variant="default"
-                onClick={() => setUpdateDialogOpen(true)}
-              >
-                <Icon name="download" className="h-4 w-4 mr-1" />
-                {t('settings.openchamber.about.actions.updateToVersion', { version: updateStore.info?.version || '' })}
-              </Button>
-            )}
+            {/* INTERNAL-NETWORK: "Update to version" button removed — <UpdateDialog> no
+                  longer mounted. */}
 
-            {!updateStore.checking && !updateStore.available && !updateStore.error && (
-              <span className="typography-meta text-muted-foreground">{t('settings.openchamber.about.state.upToDate')}</span>
-            )}
-
-            <Button size="sm"
-              variant="outline"
-              onClick={() => updateStore.checkForUpdates()}
-              disabled={updateStore.checking}
-            >
-              {t('settings.openchamber.about.actions.checkForUpdates')}
-            </Button>
+            {/* INTERNAL-NETWORK: "Up to date" status pill + "Check for updates"
+                button removed from desktop AboutSettings layout (external update
+                channel disabled). */}
           </div>
         </div>
         
@@ -302,18 +227,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
         </div>
       </div>
 
-      <UpdateDialog
-        open={updateDialogOpen}
-        onOpenChange={setUpdateDialogOpen}
-        info={updateStore.info}
-        downloading={updateStore.downloading}
-        downloaded={updateStore.downloaded}
-        progress={updateStore.progress}
-        error={updateStore.error}
-        onDownload={updateStore.downloadUpdate}
-        onRestart={updateStore.restartToUpdate}
-        runtimeType={updateStore.runtimeType}
-      />
+      {/* INTERNAL-NETWORK: <UpdateDialog> removed — no button opens it. */}
     </div>
   );
 };

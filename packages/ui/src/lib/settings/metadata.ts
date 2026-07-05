@@ -5,7 +5,6 @@ export type SettingsPageSlug =
   | 'projects'
   | 'remote-instances'
   | 'providers'
-  | 'usage'
   | 'agents'
   | 'behavior'
   | 'commands'
@@ -21,9 +20,9 @@ export type SettingsPageSlug =
   | 'magic-prompts'
   | 'snippets'
   | 'notifications'
-  | 'voice'
-  | 'tunnel'
-  | 'about';
+  | 'voice';
+  // INTERNAL-NETWORK: 'usage', 'tunnel', 'about' removed — quota dashboard,
+  // remote tunnels, and About OpenChamber section all disabled.
 
 type SettingsPageGroup =
   | 'appearance'
@@ -83,13 +82,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     kind: 'split',
     keywords: ['provider', 'providers', 'models', 'model', 'api key', 'api keys', 'openai', 'anthropic', 'ollama', 'credentials'],
   },
-  {
-    slug: 'usage',
-    title: 'Usage',
-    group: 'usage',
-    kind: 'split',
-    keywords: ['quota', 'billing', 'tokens', 'usage', 'limits'],
-  },
+  // INTERNAL-NETWORK: 'usage' page metadata entry removed.
   {
     slug: 'agents',
     title: 'Agents',
@@ -194,8 +187,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
 
   { slug: 'notifications', title: 'Notifications', group: 'general', kind: 'single', keywords: ['alerts', 'native', 'summary', 'summarization'], },
   { slug: 'voice', title: 'Voice', group: 'advanced', kind: 'single', keywords: ['tts', 'speech', 'voice'], isAvailable: (ctx) => !ctx.isVSCode },
-  { slug: 'tunnel', title: 'Remote Tunnel', group: 'advanced', kind: 'single', keywords: ['tunnel', 'cloudflare', 'qr', 'remote', 'mobile', 'share'], isAvailable: (ctx) => !ctx.isVSCode },
-  { slug: 'about', title: 'About', group: 'advanced', kind: 'single', keywords: ['about', 'version', 'updates', 'release', 'changelog'], isAvailable: (ctx) => ctx.isMobile },
+  // INTERNAL-NETWORK: 'tunnel', 'about' entries removed.
 ] as const;
 
 const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Record<SidebarSection, SettingsPageSlug> = {
@@ -205,7 +197,7 @@ const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Record<SidebarSection, SettingsPa
   mcp: 'mcp',
   skills: 'skills.installed',
   providers: 'providers',
-  usage: 'usage',
+  // INTERNAL-NETWORK: 'usage' legacy mapping removed.
   'git-identities': 'git',
   settings: 'home',
 };

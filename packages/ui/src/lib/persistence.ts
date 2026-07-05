@@ -570,9 +570,7 @@ const applyDesktopUiPreferences = (settings: DesktopSettings) => {
   ) {
     store.setShowSplitAssistantMessageActions(settings.showSplitAssistantMessageActions);
   }
-  if (typeof settings.reportUsage === 'boolean' && settings.reportUsage !== store.reportUsage) {
-    store.setReportUsage(settings.reportUsage);
-  }
+  // INTERNAL-NETWORK: reportUsage sync removed.
   if (typeof settings.fontSize === 'number' && Number.isFinite(settings.fontSize) && settings.fontSize !== store.fontSize) {
     store.setFontSize(settings.fontSize);
   }
@@ -1168,9 +1166,7 @@ const sanitizeWebSettings = (payload: unknown): DesktopSettings | null => {
     result.skillCatalogs = skillCatalogs;
   }
 
-  if (typeof candidate.reportUsage === 'boolean') {
-    result.reportUsage = candidate.reportUsage;
-  }
+  // INTERNAL-NETWORK: reportUsage serialization removed.
 
   if (typeof candidate.globalBehaviorPrompt === 'string') {
     result.globalBehaviorPrompt = candidate.globalBehaviorPrompt;

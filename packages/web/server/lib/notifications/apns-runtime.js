@@ -15,7 +15,11 @@ const APNS_HOST_SANDBOX = 'https://api.sandbox.push.apple.com';
 // APNs rejects auth tokens older than 1h; refresh well inside that window.
 const JWT_TTL_MS = 50 * 60 * 1000;
 const DEFAULT_BUNDLE_ID = 'com.openchamber.app';
-const DEFAULT_RELAY_URL = 'https://api.openchamber.dev/v1/push/send';
+// INTERNAL-NETWORK: relay channel disabled. Empty string is the sentinel for
+// "no relay configured" — resolveRelayConfig() never returns a non-null value
+// unless the admin explicitly overrides via OPENCHAMBER_PUSH_RELAY_URL (in which
+// case they're knowingly pointing at their own relay endpoint).
+const DEFAULT_RELAY_URL = '';
 const MAX_TOKENS_PER_SESSION = 10;
 // APNs reasons that mean the token is permanently invalid → drop it.
 const DEAD_TOKEN_REASONS = new Set(['BadDeviceToken', 'Unregistered', 'DeviceTokenNotForTopic']);
@@ -373,11 +377,15 @@ export const createApnsRuntime = (deps) => {
   // generic text; the relay signs + sends and reports which tokens to drop. Direct mode (below)
   // is the fallback for self-hosters who set OPENCHAMBER_APNS_* and disable the relay.
   const resolveRelayConfig = () => {
+    // INTERNAL-NETWORK: relay mode is disabled by default. Only an explicit
+    // OPENCHAMBER_PUSH_RELAY_URL (pointing at an admin-operated relay) re-enables
+    // it. OPENCHAMBER_PUSH_RELAY_DISABLED=true still hard-disables it.
     if (trimmedEnv('OPENCHAMBER_PUSH_RELAY_DISABLED') === 'true') return null;
-    const url = trimmedEnv('OPENCHAMBER_PUSH_RELAY_URL') || DEFAULT_RELAY_URL;
+    const explicitUrl = trimmedEnv('OPENCHAMBER_PUSH_RELAY_URL');
+    if (!explicitUrl) return null; // default relay endpoint no longer trusted
     return {
-      url,
-      registerUrl: url.replace(/\/send$/, '/register-token'),
+      url: explicitUrl,
+      registerUrl: explicitUrl.replace(/\/send$/, '/register-token'),
       environment:
         (trimmedEnv('OPENCHAMBER_APNS_ENVIRONMENT') || 'sandbox').toLowerCase() === 'production'
           ? 'production'
